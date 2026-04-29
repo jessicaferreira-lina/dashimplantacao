@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lina — Dashboard Implantação</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --teal: #0F6E56; --teal-light: #E1F5EE; --teal-mid: #1D9E75;
+    --blue: #378ADD; --blue-light: #E6F1FB; --blue-dark: #0C447C;
+    --green: #639922; --green-light: #EAF3DE; --green-dark: #27500A;
+    --amber: #BA7517; --amber-light: #FAEEDA; --amber-dark: #633806;
+    --red: #E24B4A; --red-light: #FCEBEB; --red-dark: #791F1F;
+    --gray: #888780; --gray-light: #F1EFE8; --gray-dark: #444441;
+    --text: #1a1a1a; --text-muted: #5F5E5A; --text-faint: #888780;
+    --bg: #f8f7f4; --surface: #ffffff; --border: rgba(0,0,0,0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header { background: var(--teal); color: #fff; padding: 18px 32px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 18px; font-weight: 500; }
+  header span { font-size: 12px; opacity: 0.75; }
+  .lina-badge { background: rgba(255,255,255,0.2); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 500; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; width: fit-content; }
+  .tab { font-size: 13px; padding: 7px 16px; border-radius: 7px; border: none; color: var(--text-muted); cursor: pointer; background: transparent; font-weight: 400; transition: all .15s; }
+  .tab.active { background: var(--teal); color: #fff; font-weight: 500; }
+  .tab:hover:not(.active) { background: var(--gray-light); }
+
+  .view { display: none; } .view.active { display: block; }
+
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .metric-label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .metric-value { font-size: 28px; font-weight: 600; color: var(--text); }
+  .metric-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .card-title { font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+  .crow { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .crow:last-child { border-bottom: none; }
+  .cname { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+  .csub { font-size: 11px; color: var(--text-muted); }
+  .gl { font-size: 11px; color: var(--text-faint); white-space: nowrap; min-width: 50px; text-align: right; }
+
+  .badge { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 12px; white-space: nowrap; }
+  .b-dev { background: var(--blue-light); color: var(--blue-dark); }
+  .b-test { background: var(--green-light); color: var(--green-dark); }
+  .b-hold { background: var(--amber-light); color: var(--amber-dark); }
+  .b-wait { background: var(--gray-light); color: var(--gray-dark); }
+  .b-err { background: var(--red-light); color: var(--red-dark); }
+  .b-done { background: var(--teal-light); color: var(--teal); }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .d-ok { background: var(--green); } .d-warn { background: var(--amber); }
+  .d-err { background: var(--red); } .d-blue { background: var(--blue); }
+
+  .rblock { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .rblock:last-child { border-bottom: none; }
+  .rtitle { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .rdesc { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+  .rstatus { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+  .pbg { background: var(--gray-light); border-radius: 4px; height: 5px; overflow: hidden; margin-top: 8px; }
+  .pfill { height: 5px; border-radius: 4px; }
+
+  .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+  .tag { font-size: 10px; padding: 2px 8px; border-radius: 8px; background: var(--gray-light); color: var(--text-muted); }
+  .tag-alert { background: var(--red-light); color: var(--red-dark); }
+
+  .fullcard { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 12px; }
+  .fheader { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .ftitle { font-size: 14px; font-weight: 500; flex: 1; }
+
+  .ritem { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .ritem:last-child { border-bottom: none; }
+  .rleft { flex: 1; }
+  .ritem-title { font-size: 13px; font-weight: 500; }
+  .ritem-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 11px; color: var(--text-muted); }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-sq { width: 10px; height: 10px; border-radius: 2px; }
+
+  .reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  @media (max-width: 768px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .grid2, .reg-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Dashboard — Implantação &amp; Conformidade</h1>
+    <span>Lina · Atualizado em 29/04/2025</span>
+  </div>
+  <span class="lina-badge">Visão Diretoria</span>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="sw('overview',this)">Visão geral</button>
+    <button class="tab" onclick="sw('implant',this)">Implantação</button>
+    <button class="tab" onclick="sw('reg',this)">Conformidade regulatória</button>
+  </div>
+
+  <!-- ============ VISÃO GERAL ============ -->
+  <div id="overview" class="view active">
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Clientes ativos</div>
+        <div class="metric-value">9</div>
+        <div class="metric-sub">em implantação</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Go-lives previstos</div>
+        <div class="metric-value" style="color:var(--teal)">6</div>
+        <div class="metric-sub">até 30/06</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Bloqueios ativos</div>
+        <div class="metric-value" style="color:var(--red)">2</div>
+        <div class="metric-sub">requerem ação</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Conformidade V5</div>
+        <div class="metric-value" style="color:var(--green)">100%</div>
+        <div class="metric-sub">marco 22/04 ✓</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Status por cliente</div>
+        <div class="crow"><div><div class="cname">Nação Fla</div><div class="csub">Receptora + ITP</div></div><span class="badge b-dev">Em dev</span><span class="gl">30/05</span></div>
+        <div class="crow"><div><div class="cname">Pay4Fun</div><div class="csub">Lina Pay</div></div><span class="badge b-dev">Em dev</span><span class="gl">12/06</span></div>
+        <div class="crow"><div><div class="cname">Banpará</div><div class="csub">Detentora + JSR</div></div><span class="badge b-hold">On hold</span><span class="gl">—</span></div>
+        <div class="crow"><div><div class="cname">Getnet</div><div class="csub">Lina Pay</div></div><span class="badge b-test">Em testes</span><span class="gl">29/05</span></div>
+        <div class="crow"><div><div class="cname">Grupo Euro 17</div><div class="csub">Lina Pay</div></div><span class="badge b-wait">Aguardando</span><span class="gl">A definir</span></div>
+        <div class="crow"><div><div class="cname">PagSmile</div><div class="csub">Pix inteligente</div></div><span class="badge b-dev">Em dev</span><span class="gl">30/05</span></div>
+        <div class="crow"><div><div class="cname">B3I</div><div class="csub">Transmissora</div></div><span class="badge b-dev">Em dev</span><span class="gl">30/05</span></div>
+        <div class="crow"><div><div class="cname">London Bank</div><div class="csub">ITP + JSR</div></div><span class="badge b-wait">Aguardando</span><span class="gl">Em aberto</span></div>
+        <div class="crow"><div><div class="cname">SulAmérica</div><div class="csub">Fase 3</div></div><span class="badge b-test">Em testes</span><span class="gl">Prod 05/05</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Conformidade regulatória — resumo</div>
+        <div class="rblock">
+          <div class="rtitle">API Pagamentos V5 — Detentoras</div>
+          <div class="rstatus"><span class="dot d-ok"></span><span class="rdesc">Marco 100% atingido em 22/04 · Clientes em conformidade com acionamentos pontuais atendidos em prioridade.</span></div>
+          <div class="pbg"><div class="pfill" style="width:100%;background:var(--green)"></div></div>
+        </div>
+        <div class="rblock">
+          <div class="rtitle">Fase 2 e 3 regulatórios — Bloco 4–6</div>
+          <div class="rstatus"><span class="dot d-blue"></span><span class="rdesc">Aguardando testes com B3 · Go Live 05/06</span></div>
+          <div class="pbg"><div class="pfill" style="width:40%;background:var(--blue)"></div></div>
+        </div>
+        <div class="rblock">
+          <div class="rtitle">APIs Dados Cadastrais v2.3.0 / Câmbio v1.1.0</div>
+          <div class="rstatus"><span class="dot d-blue"></span><span class="rdesc">BRB ajustou payload · Em testes pelo cliente</span></div>
+          <div class="pbg"><div class="pfill" style="width:70%;background:var(--teal-mid)"></div></div>
+        </div>
+        <div class="rblock">
+          <div class="rtitle">Piloto JSR — Detentoras</div>
+          <div class="rstatus"><span class="dot d-err"></span><span class="rdesc">Encerrado · Clientes em desconformidade — apurando ofensores</span></div>
+          <div class="tags"><span class="tag tag-alert">⚠ Ação imediata necessária</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="card-title" style="border-bottom:none;margin-bottom:0;padding-bottom:0">Distribuição de status — clientes em implantação</div>
+      <div style="position:relative;height:220px;margin-top:12px">
+        <canvas id="statusChart" role="img" aria-label="Gráfico de barras com status de 9 clientes em implantação">4 em desenvolvimento, 2 em testes, 1 on hold, 2 aguardando.</canvas>
+      </div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-sq" style="background:var(--blue)"></span>Em desenvolvimento (4)</span>
+        <span class="legend-item"><span class="legend-sq" style="background:var(--green)"></span>Em testes (2)</span>
+        <span class="legend-item"><span class="legend-sq" style="background:var(--gray)"></span>Aguardando (2)</span>
+        <span class="legend-item"><span class="legend-sq" style="background:var(--amber)"></span>On hold (1)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ IMPLANTAÇÃO ============ -->
+  <div id="implant" class="view">
+    <div class="fullcard">
+      <div class="ritem">
+        <div class="rleft">
+          <div class="ritem-title">Nação Fla — Receptora + ITP</div>
+          <div class="ritem-desc">Atividade conduzida internamente pelo cliente (BRB) com múltiplas áreas. Ação Lina: solicitar visibilidade das próximas etapas (BRB/Tecban).</div>
+          <div class="tags"><span class="tag">Go Live: 30/05</span><span class="tag">Sem bloqueio Lina</span></div>
+        </div>
+        <span class="badge b-dev">Em dev</span>
+      </div>
+      <div class="ritem">
+        <div class="rleft">
+          <div class="ritem-title">Pay4Fun — Lina Pay</div>
+          <div class="ritem-desc">Integrações de APIs em desenvolvimento. Previsão de conclusão: 15/05. Sem impeditivos reportados.</div>
+          <div class="tags"><span class="tag">Go Live: 12/06</span><span class="tag">Conclusão APIs: 15/05</span></div>
+        </div>
+        <span class="badge b-dev">Em dev</span>
+      </div>
+      <div class="ritem">
+        <div class="rleft">
+          <div class="ritem-title">Banpará — Detentora + JSR</div>
+          <div class="ritem-desc">Questões internas do cliente (sem detalhamento para Lina/Mastercard). Sem impacto regulatório ou bloqueio Lina.</div>
+          <div class="tags"><span class="tag">On hold</span><span class="tag">Go Live indefinido</span><span class="tag">Sem impacto regulatório</span></div>
+        </div>
+        <span class="badge b-hold">On hold</span>
+      </div>
+      <div class="ritem">
+        <div class="rleft">
+          <div class="ritem-title">Getnet — Lina Pay</div>
+          <div class="ritem-desc">Em testes. Bloqueio de infraestrutura (firewall lado cliente). Ação Lina: cobrança de posicionamento em 30/04. Checkpoint semanal ativo.</div>
+          <div class="tags"><span class="tag">Go Live: 29/05</span><span class="tag tag-alert">Bloqueio: infraestrutura</span></div>
+        </div>
+        <span class="badge b-test">Em testes</span>
+      </div>
+      <div class="ritem">
+        <div class="rleft">
+          <div class="ritem-title">Grupo Euro 17 — Lina Pay</div>
+          <div class="ritem-desc">Aguardando definição do cliente. Bloqueio: validação de banco (limitação atual do produto). Tema em tratativa entre cliente e usuário final. Acompanhamento próximo.</div>
+          <div class="tags"><span class="tag">Go Live: a definir</span><span class="tag tag-alert">Bloqueio: produto</span></div>
+        </div>
+        <span class="badge b-wait">Aguardando</span>
+      </div>
+      <div class="ritem">
+        <div class="rleft">
+          <div class="ritem-title">PagSmile — Pix inteligente</div>
+          <div class="ritem-desc">Fase de integração das APIs em andamento. Previsão de conclusão: 15/05. Sem impeditivos reportados.</div>
+          <div class="tags"><span class="tag">Go Live: 30/05</span><span class="tag">Sem bloqueio</span></div>
+        </div>
+        <span class="badge b-dev">Em dev</span>
+      </div>
+      <div class="ritem">
+        <div class="rleft">
+          <div class="ritem-title">B3I — Transmissora</div>
+          <div class="ritem-desc">APIs em desenvolvimento. Previsão de conclusão em definição. Sem impeditivos reportados.</div>
+          <div class="tags"><span class="tag">Go Live: 30/05</span><span class="tag">Sem bloqueio</span></div>
+        </div>
+        <span class="badge b-dev">Em dev</span>
+      </div>
+      <div class="ritem">
+        <div class="rleft">
+          <div class="ritem-title">London Bank — ITP + JSR</div>
+          <div class="ritem-desc">Aguardando testes com detentora. Próximo passo: retorno do cliente para habilitação de CNPJ. Checkpoint semanal com cliente.</div>
+          <div class="tags"><span class="tag">Go Live: em aberto (dep. testes)</span></div>
+        </div>
+        <span class="badge b-wait">Aguardando</span>
+      </div>
+      <div class="ritem">
+        <div class="rleft">
+          <div class="ritem-title">SulAmérica — Fase 3</div>
+          <div class="ritem-desc">Testes de cotação viagem em curso. Previsão de subida em produção: 05/05. Próximos passos: desenvolvimento de resgate (sem previsão). Avaliando estratégia: assistência financeira, jornada receptora ou ajustes de fase 2.</div>
+          <div class="tags"><span class="tag">Produção: 05/05</span><span class="tag">Resgate: sem previsão</span><span class="tag">Estratégia: em avaliação</span></div>
+        </div>
+        <span class="badge b-test">Em testes</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ REGULATÓRIO ============ -->
+  <div id="reg" class="view">
+    <div class="reg-grid">
+      <div class="fullcard" style="margin-bottom:0">
+        <div class="fheader">
+          <span class="dot d-ok" style="width:9px;height:9px"></span>
+          <span class="ftitle">API Pagamentos V5 — Detentoras</span>
+          <span class="badge b-done">Concluído</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Marco 100% atingido em <strong>22/04</strong>. Detentoras em conformidade com a versão V5. Pendêcias estão sendo tratadas em caráter de prioridade</div>
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint);margin-bottom:4px"><span>Conformidade dos clientes</span><span>100%</span></div>
+          <div class="pbg" style="height:8px"><div class="pfill" style="width:100%;background:var(--green);height:8px;border-radius:4px"></div></div>
+        </div>
+      </div>
+
+      <div class="fullcard" style="margin-bottom:0">
+        <div class="fheader">
+          <span class="dot d-blue" style="width:9px;height:9px"></span>
+          <span class="ftitle">Fase 2 e 3 — Bloco 4 ao 6</span>
+          <span class="badge b-dev">Em andamento</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Aguardando início dos testes com a B3 — previsão após <strong>11/05</strong>. Multiversionamento ativo: <strong>05/06/2026 – 05/09/2026</strong>.</div>
+        <div class="tags" style="margin-top:8px"><span class="tag">Go Live: 05/06</span><span class="tag">Testes: após 11/05</span></div>
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint);margin-bottom:4px"><span>Progresso estimado</span><span>40%</span></div>
+          <div class="pbg" style="height:8px"><div class="pfill" style="width:40%;background:var(--blue);height:8px;border-radius:4px"></div></div>
+        </div>
+      </div>
+
+      <div class="fullcard" style="margin-bottom:0">
+        <div class="fheader">
+          <span class="dot d-blue" style="width:9px;height:9px"></span>
+          <span class="ftitle">Dados Cadastrais v2.3.0 / Câmbio v1.1.0</span>
+          <span class="badge b-test">Em testes</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.6">BRB realizou ajustes no payload. Status atual: em testes pelo cliente. Ação Lina: apoio sob demanda.</div>
+        <div class="tags" style="margin-top:8px"><span class="tag">Responsável: BRB</span><span class="tag">Lina: apoio sob demanda</span></div>
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint);margin-bottom:4px"><span>Progresso estimado</span><span>70%</span></div>
+          <div class="pbg" style="height:8px"><div class="pfill" style="width:70%;background:var(--teal-mid);height:8px;border-radius:4px"></div></div>
+        </div>
+      </div>
+
+      <div class="fullcard" style="margin-bottom:0;border-color:rgba(226,75,74,0.3)">
+        <div class="fheader">
+          <span class="dot d-err" style="width:9px;height:9px"></span>
+          <span class="ftitle">Piloto JSR — Detentoras</span>
+          <span class="badge b-err">Atenção</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Status: <strong>encerrado</strong>. Nossos clientes inclusive a Lina ITP estão em desconformidade. Estamos apurando de forma detalhada os ofensores.</div>
+        <div class="tags" style="margin-top:8px">
+          <span class="tag tag-alert">⚠ Ação imediata necessária</span>
+          <span class="tag">Levantamento em curso</span>
+          <span class="tag">Lina ITP afetada</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function sw(id, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+const colors = ['#378ADD','#378ADD','#BA7517','#639922','#888780','#378ADD','#378ADD','#888780','#639922'];
+const statuses = ['Em dev','Em dev','On hold','Em testes','Aguardando','Em dev','Em dev','Aguardando','Em testes'];
+
+new Chart(document.getElementById('statusChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Nação Fla','Pay4Fun','Banpará','Getnet','Euro 17','PagSmile','B3I','London Bank','SulAmérica'],
+    datasets: [{ data: [3,3,1,4,2,3,3,2,4], backgroundColor: colors, borderRadius: 4 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: c => statuses[c.dataIndex] } }
+    },
+    scales: {
+      y: { display: false, max: 5 },
+      x: {
+        ticks: { font: { size: 11 }, color: '#888780', autoSkip: false, maxRotation: 35 },
+        grid: { display: false }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
